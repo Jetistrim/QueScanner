@@ -1,0 +1,11 @@
+Dimensão: 5. Climática
+Tema: 5.1. Emissões
+5.1.1. Inventário
+Aplicação setorial: Aplicável ao setor
+5.1.1.1. Há inventário de emissões auditado?
+(Selecione uma alternativa)
+a) Sim, com escopo 1 e 2
+Tipo da evidência Apenas Evidência Pública
+Exemplos de evidências aceitas: Relatório de sustentabilidade
+com detalhamento metodológico
+e referência ao padrão GHG Protocol

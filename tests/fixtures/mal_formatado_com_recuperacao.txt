@@ -1,0 +1,12 @@
+Dimensão: 3. Governança
+Tema: 3.1. Estrutura de Governança
+3.1.1. Conselho
+Aplicação setorial: Aplicável
+3.1.1.1. O conselho possui comitês temáticos?
+Texto solto sem padrão esperado
+Outro texto solto
+3.1.1.2. Há avaliação anual do conselho?
+( ) Sim
+( ) Não
+Tipo da evidência Apenas Evidência Pública
+Exemplos de evidências aceitas: Ata de reunião

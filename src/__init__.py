@@ -1,0 +1,1 @@
+"""QueScanner package."""
