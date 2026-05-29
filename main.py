@@ -173,15 +173,7 @@ def assign_global_row_ids(records: list[RowData]) -> list[RowData]:
     return reassigned_records
 
 
-def main() -> int:
-    logger = configure_logging()
-
-    parsed = parse_cli_args(sys.argv, logger)
-    if parsed is None:
-        return 1
-
-    input_paths, output_path = parsed
-
+def run_processing(input_paths: list[Path], output_path: Path, logger: logging.Logger) -> int:
     try:
         all_records: list[RowData] = []
 
@@ -221,6 +213,17 @@ def main() -> int:
     except (OSError, ValueError, KeyError) as exc:
         logger.exception("Falha ao processar arquivo: %s", exc)
         return 1
+
+
+def main() -> int:
+    logger = configure_logging()
+
+    parsed = parse_cli_args(sys.argv, logger)
+    if parsed is None:
+        return 1
+
+    input_paths, output_path = parsed
+    return run_processing(input_paths, output_path, logger)
 
 
 if __name__ == "__main__":

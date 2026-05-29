@@ -29,6 +29,24 @@ Regras do modo pasta de saída:
 
 O script foi preparado para uso via Power Automate Desktop e depende apenas de caminhos informados na linha de comando.
 
+## Execução manual no Windows (.bat)
+
+Para executar sem Power Automate e sem informar caminhos na CLI, use:
+
+```bat
+run_gui.bat
+```
+
+Fluxo da execução manual:
+
+- Abre seletor para escolher um ou mais arquivos `.pdf`.
+- Abre seletor para escolher a pasta onde será salvo o `.xlsx`.
+- O arquivo final mantém o padrão de nome automático `consolidado_YYYYMMDD_HHMMSS.xlsx`.
+- Se já existir nome igual, aplica sufixo incremental (`_01`, `_02`, ...).
+- Exibe popup de sucesso ou erro ao final do processamento.
+
+Se o usuário cancelar qualquer seletor, a execução é encerrada sem gerar arquivo.
+
 ## Dependências
 
 - `pandas` para montar o `DataFrame` e exportar o Excel.
