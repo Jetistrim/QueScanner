@@ -9,7 +9,7 @@ import main as app_main
 try:
     import tkinter as tk
     from tkinter import filedialog, messagebox
-except ImportError:  # pragma: no cover - fallback for environments without Tk
+except ImportError: 
     tk = None
     filedialog = None
     messagebox = None
@@ -46,21 +46,36 @@ def select_output_directory() -> Path | None:
 
 
 def show_warning(title: str, text: str) -> None:
-    if messagebox is None:
+    if messagebox is None or tk is None:
         return
-    messagebox.showwarning(title, text)
+    if getattr(tk, "_default_root", None) is None:
+        return
+    try:
+        messagebox.showwarning(title, text)
+    except Exception:
+        return
 
 
 def show_info(title: str, text: str) -> None:
-    if messagebox is None:
+    if messagebox is None or tk is None:
         return
-    messagebox.showinfo(title, text)
+    if getattr(tk, "_default_root", None) is None:
+        return
+    try:
+        messagebox.showinfo(title, text)
+    except Exception:
+        return
 
 
 def show_error(title: str, text: str) -> None:
-    if messagebox is None:
+    if messagebox is None or tk is None:
         return
-    messagebox.showerror(title, text)
+    if getattr(tk, "_default_root", None) is None:
+        return
+    try:
+        messagebox.showerror(title, text)
+    except Exception:
+        return
 
 
 def launch_gui_flow() -> int:

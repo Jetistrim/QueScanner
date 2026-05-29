@@ -69,6 +69,34 @@
 
 **Regra de ouro:** A lógica de Regex e parsing (`extractor.py`) nunca lê nem escreve arquivos. Recebe `list[str]` e devolve `list[dict]`. Todo I/O fica em `main.py`.
 
+### 4.1 Padrão de módulos e extensibilidade
+
+**Princípio:** Cada módulo novo deve ter responsabilidade única e fronteiras explícitas de entrada e saída.
+
+#### 4.1.1 Contrato obrigatório para novos módulos
+
+- Toda função pública deve ter type hints completos.
+- Regras de negócio não devem ficar misturadas com I/O de arquivo.
+- Módulos de domínio devem receber dados em memória e retornar dados em memória.
+- Logs devem usar o `logger` do fluxo principal; não usar `print()`.
+- Erros devem ser tratados com exceções específicas e mensagens acionáveis.
+
+#### 4.1.2 Mapa de expansão por tipo de módulo
+
+| Tipo | Local recomendado | Contrato esperado |
+|---|---|---|
+| Parser de entrada | `src/parsers/<origem>.py` | `Path`/conteúdo -> `list[dict]` compatível com schema |
+| Exportador | `src/exporters/<formato>.py` | `DataFrame` + `Path` -> arquivo de saída |
+| Transformador | `src/transformers/<operacao>.py` | dados normalizados -> dados normalizados |
+| Validador | `src/validators/<regra>.py` | dados -> resultado de validação/erro |
+
+#### 4.1.3 Regras de integração
+
+- `main.py` permanece como orquestrador do fluxo e ponto único de entrada.
+- `src/models.py` permanece como fonte única de constantes, padrões e contratos de saída.
+- Integração de módulo novo deve ocorrer por função dedicada, sem duplicação de lógica existente.
+- Toda expansão deve incluir cobertura mínima de testes unitários e de integração.
+
 ---
 
 ## 5. Padrões de código
@@ -78,6 +106,28 @@
 - **Erros:** Proibido `except Exception as e: pass`. Capturar exceções específicas. Falha em uma questão → `logger.warning()` e continua para a próxima. Nunca quebra o processo inteiro.
 - **Logging:** Configurado no `main.py`. Proibido `print()`. Usar `logger.info()`, `logger.warning()`, `logger.error()`.
 - **Caminhos:** Usar `pathlib.Path`. Argumentos lidos de `sys.argv`, nunca hardcoded.
+
+## 5.1 Padrões de expansão e novos módulos
+
+Antes de criar módulo novo, classificar claramente se ele é `parser`, `exporter`, `transformer` ou `validator`.
+
+Checklist mínimo para expansão:
+
+- [ ] Arquivo criado no diretório correto dentro de `src/`.
+- [ ] Funções públicas com assinatura tipada e contrato claro de entrada/saída.
+- [ ] Sem caminhos hardcoded e sem I/O em camada indevida.
+- [ ] Uso de logging padronizado e sem `print()`.
+- [ ] Tratamento explícito de erros com exceções específicas.
+- [ ] Testes unitários no padrão `tests/test_<modulo>.py`.
+- [ ] Teste de integração cobrindo a chamada do módulo no fluxo principal.
+
+Convenções de nomenclatura para crescimento:
+
+- Parsers: `parse_<origem>.py`.
+- Exporters: `export_<formato>.py`.
+- Transformers: `transform_<operacao>.py`.
+- Validators: `validate_<regra>.py`.
+- Helpers internos: prefixar com `_` quando não forem públicos.
 
 ---
 

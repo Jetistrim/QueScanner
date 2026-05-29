@@ -59,6 +59,33 @@ Se o usuário cancelar qualquer seletor, a execução é encerrada sem gerar arq
 - `src/extractor.py`: máquina de estados e parsing.
 - `src/models.py`: colunas, padrões e constantes.
 
+## Arquitetura modular e extensibilidade
+
+O projeto foi organizado para permitir crescimento incremental sem quebrar o pipeline principal.
+
+Componentes atuais:
+
+- `main.py`: orquestra entrada/saída (CLI), logging e fluxo de processamento.
+- `src/extractor.py`: parser do questionário (máquina de estados) sem I/O de arquivos.
+- `src/models.py`: contratos de dados, colunas de saída e validações.
+
+Como expandir com segurança:
+
+1. Criar o novo módulo por responsabilidade (`parser`, `exporter`, `transformer` ou `validator`).
+2. Definir contrato explícito com tipagem nas funções públicas.
+3. Integrar no fluxo de `main.py` sem duplicar regras de negócio.
+4. Reutilizar validações e constantes de `src/models.py`.
+5. Adicionar testes unitários e de integração para o novo comportamento.
+
+Estrutura recomendada para novos módulos:
+
+- `src/parsers/<origem>.py`: novos formatos de entrada (ex.: outro layout de questionário).
+- `src/exporters/<formato>.py`: novos formatos de saída (ex.: CSV, JSON, Parquet).
+- `src/transformers/<operacao>.py`: transformações de dados antes da saída final.
+- `src/validators/<regra>.py`: validações adicionais de consistência.
+
+As regras normativas de modularidade (contratos, naming e checklist) estão em `PADRÃO DE CÓDIGO.md`.
+
 ## Saída esperada
 
 O arquivo final deve conter as 25 colunas na ordem definida no padrão do projeto. As colunas manuais permanecem vazias no bootstrap inicial.

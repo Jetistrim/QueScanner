@@ -4,16 +4,19 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TypeAlias, cast
+from typing import TypeAlias
 
 import pandas as pd  # type: ignore[reportMissingImports]
 import pdfplumber  # type: ignore[reportMissingImports]
-from openpyxl import load_workbook  # type: ignore[reportMissingImports]
-from openpyxl.worksheet.table import Table, TableStyleInfo  # type: ignore[reportMissingImports]
-from openpyxl.utils.cell import get_column_letter  # type: ignore[reportMissingImports]
 
 from src.extractor import parse_pdf_lines
-from src.models import COLUMN_ORDER, validate_output_records
+from src.exporters import xlsx_exporter
+from src.io import pdf_reader
+from src.models import COLUMN_ORDER as MODEL_COLUMN_ORDER
+from src.services.processing_service import (
+    assign_global_row_ids as service_assign_global_row_ids,
+    run_processing_pipeline,
+)
 
 
 LOGGER_NAME = "que_scanner"
@@ -22,6 +25,7 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "outputs"
 DEFAULT_OUTPUT_BASENAME = "consolidado"
 RowValue: TypeAlias = str | int | float | None
 RowData: TypeAlias = dict[str, RowValue]
+COLUMN_ORDER = MODEL_COLUMN_ORDER
 
 
 def configure_logging() -> logging.Logger:
@@ -47,54 +51,16 @@ def configure_logging() -> logging.Logger:
 
 
 def extract_lines_from_pdf(pdf_path: Path) -> list[str]:
-    lines: list[str] = []
-    pdfplumber_module: Any = pdfplumber
-    with pdfplumber_module.open(pdf_path) as pdf:
-        for page in getattr(pdf, "pages", []):
-            extractor = getattr(page, "extract_text", None)
-            text_value = extractor(layout=False) if callable(extractor) else ""
-            text = text_value if isinstance(text_value, str) else ""
-            for line in text.splitlines():
-                cleaned = line.strip()
-                if cleaned:
-                    lines.append(cleaned)
-    return lines
+    pdf_reader.pdfplumber = pdfplumber
+    return pdf_reader.extract_lines_from_pdf(pdf_path)
 
 
 def build_dataframe(records: list[RowData]) -> pd.DataFrame:
-    validated_records = validate_output_records(cast(list[dict[str, object]], records))
-    frame = pd.DataFrame(validated_records)
-    for column in COLUMN_ORDER:
-        if column not in frame.columns:
-            frame[column] = None
-    return frame.loc[:, COLUMN_ORDER]
+    return xlsx_exporter.build_dataframe(records)
 
 
 def apply_basic_table_format(output_path: Path, row_count: int, column_count: int) -> None:
-    if row_count <= 0 or column_count <= 0:
-        return
-
-    workbook = load_workbook(output_path)
-    worksheet = workbook.active
-    if worksheet is None:
-        raise ValueError("Não foi possível obter a planilha ativa para formatação")
-
-    last_column = get_column_letter(column_count)
-    last_row = row_count + 1
-    table_ref = f"A1:{last_column}{last_row}"
-
-    table = Table(displayName="QueScannerTable", ref=table_ref)
-    table.tableStyleInfo = TableStyleInfo(
-        name="TableStyleMedium2",
-        showFirstColumn=False,
-        showLastColumn=False,
-        showRowStripes=True,
-        showColumnStripes=False,
-    )
-    worksheet.add_table(table)
-    worksheet.freeze_panes = "A2"
-
-    workbook.save(output_path)
+    xlsx_exporter.apply_basic_table_format(output_path, row_count=row_count, column_count=column_count)
 
 
 def build_generated_output_filename() -> str:
@@ -165,54 +131,21 @@ def parse_cli_args(argv: list[str], logger: logging.Logger) -> tuple[list[Path],
 
 
 def assign_global_row_ids(records: list[RowData]) -> list[RowData]:
-    reassigned_records: list[RowData] = []
-    for index, record in enumerate(records, start=1):
-        reassigned_record = dict(record)
-        reassigned_record["ID"] = index
-        reassigned_records.append(reassigned_record)
-    return reassigned_records
+    return service_assign_global_row_ids(records)
 
 
 def run_processing(input_paths: list[Path], output_path: Path, logger: logging.Logger) -> int:
-    try:
-        all_records: list[RowData] = []
-
-        for index, input_path in enumerate(input_paths, start=1):
-            logger.info("Iniciando processamento (%s/%s): %s", index, len(input_paths), input_path)
-            lines = extract_lines_from_pdf(input_path)
-            records = parse_pdf_lines(lines, input_path=input_path, logger=logger)
-            all_records.extend(records)
-            logger.info(
-                "Arquivo consolidado (%s/%s): %s | linhas=%s",
-                index,
-                len(input_paths),
-                input_path,
-                len(records),
-            )
-
-        all_records = assign_global_row_ids(all_records)
-
-        frame = build_dataframe(all_records)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        final_output_path = ensure_unique_output_path(output_path)
-        if final_output_path != output_path:
-            logger.warning(
-                "Arquivo de saída já existe. Nome alternativo aplicado: %s",
-                final_output_path,
-            )
-
-        cast(Any, frame).to_excel(final_output_path, index=False)
-        apply_basic_table_format(final_output_path, row_count=len(frame), column_count=len(frame.columns))
-        logger.info(
-            "Processamento concluído com sucesso: %s | arquivos=%s | linhas=%s",
-            final_output_path,
-            len(input_paths),
-            len(all_records),
-        )
-        return 0
-    except (OSError, ValueError, KeyError) as exc:
-        logger.exception("Falha ao processar arquivo: %s", exc)
-        return 1
+    return run_processing_pipeline(
+        input_paths,
+        output_path,
+        logger,
+        line_extractor=extract_lines_from_pdf,
+        line_parser=parse_pdf_lines,
+        frame_builder=build_dataframe,
+        frame_writer=xlsx_exporter.export_to_xlsx,
+        table_formatter=apply_basic_table_format,
+        unique_path_resolver=ensure_unique_output_path,
+    )
 
 
 def main() -> int:
